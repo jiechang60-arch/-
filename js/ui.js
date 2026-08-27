@@ -180,6 +180,15 @@
     UI.buttons.weaponLib = { x: DW - 250, y: DH - 176, w: 180, h: 56, label: '兵器库 ⚔', fs: 28 };
     R.redButton(ctx, UI.buttons.weaponLib);
 
+    // 本版本的核心规则：开局不消耗体力，库存与穿戴永久保留。
+    ctx.save();
+    R.font(ctx, 22, true);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#6a5c42';
+    ctx.fillText('不限体力 · 随时开局　｜　道具永久保留 · 可自由替换', DW / 2, DH - 94);
+    ctx.restore();
+
     var bestWave = parseInt(A.storageGet('zy_best') || '0', 10);
     if (bestWave > 0) {
       ctx.save();
@@ -334,10 +343,10 @@
     rb.disabled = G.p.mantou < rb.bun;
     R.redButton(ctx, rb);
 
-    // 技能道具栏（征兵按钮左侧，竖排5个小按钮；数量永久保留）
+    // 主动道具栏（征兵按钮左侧；被动道具在顶部单独显示）
     UI.itemButtons = [];
     if (ZY.Items) {
-      var keys = C.ITEM_KEYS;
+      var keys = C.ITEM_ACTIVE_KEYS;
       var ibW = 64, ibH = 68, ibGap = 10;
       var ibX = 16, ibY = L.btnY + 12;
       for (var ik = 0; ik < keys.length; ik++) {
@@ -366,6 +375,19 @@
         ctx.fillText('×' + cnt, bx + ibW / 2, by + 48);
         ctx.restore();
         UI.itemButtons.push({ x: bx, y: by, w: ibW, h: ibH, item: id });
+      }
+      // 被动农民状态：持有即生效，不需要点击且不会消耗。
+      var farmerN = ZY.Items.count('farmer');
+      if (farmerN > 0) {
+        var remain = G.p && typeof G.p.farmerSpawnT === 'number' ? Math.max(0, G.p.farmerSpawnT) : C.ITEM_PASSIVE_CFG.farmer.spawnCD;
+        ctx.save();
+        ctx.fillStyle = 'rgba(55,86,42,0.9)';
+        R.roundRect(ctx, 18, 154, 142, 42, 8); ctx.fill();
+        ctx.fillStyle = '#f2ead2';
+        R.font(ctx, 18, true);
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('被动·农民 ×' + farmerN + '　' + Math.ceil(remain) + 's', 89, 175);
+        ctx.restore();
       }
       // 瞄准模式提示
       if (ZY.Items.pending) {
@@ -542,7 +564,7 @@
   };
 
   // ============ 武器库 ============
-  // 武器库界面：顶部5角色装备槽 + 中间4品质武器列表 + 拖拽穿戴
+  // 武器库界面：顶部6角色装备槽 + 中间4品质武器列表 + 拖拽穿戴
   UI.weaponSlots = [];      // 角色装备槽区域 [{x,y,w,h,name}]
   UI.weaponItems = [];      // 武器列表项区域 [{x,y,w,h,wid,kind:'owned'|'frag'}]
   UI.weaponCraftBtns = [];  // 可合成武器的合成按钮 [{x,y,w,h,wid}]
@@ -560,14 +582,19 @@
     ctx.fillStyle = '#8a3a28';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('兵器库', DW / 2, 60);
+    R.font(ctx, 18, false);
+    ctx.fillStyle = '#6a5c42';
+    ctx.fillText('永久收藏 · 拖入槽位即可替换，旧武器自动回库', DW / 2, 92);
     ctx.restore();
     UI.buttons.wlibBack = { x: 20, y: 28, w: 110, h: 56, label: '返回', fs: 28 };
     R.darkButton(ctx, UI.buttons.wlibBack);
 
     // ===== 顶部5角色装备槽 =====
     UI.weaponSlots = [];
-    var slotW = 108, slotH = 130, slotGap = 12;
-    var slotsW = 5 * slotW + 4 * slotGap;
+    var slotCount = C2.GENERAL_NAMES.length;
+    var slotGap = 8;
+    var slotW = Math.floor((DW - 36 - (slotCount - 1) * slotGap) / slotCount), slotH = 130;
+    var slotsW = slotCount * slotW + (slotCount - 1) * slotGap;
     var slotStartX = (DW - slotsW) / 2;
     var slotY = 110;
     ctx.save();
@@ -723,3 +750,4 @@
 
   ZY.UI = UI;
 })();
+
