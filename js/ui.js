@@ -157,7 +157,7 @@
     // 再画斗字，传入戳刺相位让它摆动躲避
     R.monk(ctx, monkX, monkY, monkS, 3, 3, false, t, pokePhase);
     // 赵云题字
-    R.livingTile(ctx, wukongX, wukongY, wukongS, '赵云', 'general', t);
+    R.livingTile(ctx, wukongX, wukongY, wukongS, '常帅', 'general', t);
     ctx.restore();
 
     // 开始按钮
@@ -346,7 +346,7 @@
     // 主动道具栏（征兵按钮左侧；被动道具在顶部单独显示）
     UI.itemButtons = [];
     if (ZY.Items) {
-      var keys = C.ITEM_ACTIVE_KEYS;
+      var keys = ZY.Items.activeKeys();
       var ibW = 64, ibH = 68, ibGap = 10;
       var ibX = 16, ibY = L.btnY + 12;
       for (var ik = 0; ik < keys.length; ik++) {
