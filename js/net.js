@@ -14,6 +14,7 @@
   var state = 'idle';       // idle | registering | hosting | connecting | connected | closed | error
   var lastError = '';
   var ws = null;
+  var httpMode = false, httpPoll = null;
   var ROOM_SERVER = root.ZYAD_ROOM_SERVER || '';
   function useRelay() { return /^wss:\/\//i.test(ROOM_SERVER); }
 
@@ -44,7 +45,7 @@
   NET.state = function () { return state; };
   NET.role = function () { return role; };
   NET.roomCode = function () { return roomCode; };
-  NET.connected = function () { return useRelay() ? !!(ws && ws.readyState === WebSocket.OPEN) : !!(conn && conn.open); };
+  NET.connected = function () { return useRelay() ? (httpMode || !!(ws && ws.readyState === WebSocket.OPEN)) : !!(conn && conn.open); };
   NET.lastError = function () { return lastError; };
 
   function peerId(code) { return 'ZYAD-' + code; }
@@ -75,7 +76,7 @@
 
   // 服务器转发模式：跨省时双方都连同一个 WebSocket 房间，不再依赖 NAT 打洞。
   function relayConnect(code, nextRole) {
-    role = nextRole; roomCode = code; lastError = '';
+    role = nextRole; roomCode = code; lastError = ''; httpMode = false;
     setState(nextRole === 'host' ? 'registering' : 'connecting');
     var opened = false;
     var relayTimer;
@@ -89,14 +90,31 @@
       if (d && d._room === 'missing') { lastError = 'room-not-found'; setState('error'); return; }
       if (onMessage) onMessage(d);
     };
-    ws.onerror = function () { lastError = 'websocket-network'; if (!opened) setState('error'); };
-    ws.onclose = function () { if (state !== 'idle' && state !== 'error') { lastError = lastError || 'websocket-closed'; setState('error'); } };
+    function fallbackHttp() { if (!opened && !httpMode) httpConnect(code, nextRole); }
+    ws.onerror = function () { lastError = 'websocket-network'; fallbackHttp(); };
+    ws.onclose = function () { if (!httpMode && state !== 'idle' && state !== 'error') { lastError = lastError || 'websocket-closed'; fallbackHttp(); } };
     // 手机上的网络/浏览器可能让 WebSocket 一直处于 CONNECTING；明确超时并让用户看到原因。
     relayTimer = setTimeout(function () {
       if (!opened && ws && ws.readyState === WebSocket.CONNECTING) {
-        lastError = 'server-timeout'; try { ws.close(); } catch (e) {} setState('error');
+        lastError = 'server-timeout'; try { ws.close(); } catch (e) {} fallbackHttp();
       }
     }, 12000);
+  }
+
+  function httpBase(code, action, r) { return ROOM_SERVER.replace(/^wss:/i, 'https:').replace(/\/$/, '') + '/room/' + code + '?transport=http&action=' + action + '&role=' + r; }
+  function httpConnect(code, r) {
+    fetch(httpBase(code, r === 'host' ? 'host' : 'join', r), { method: 'POST' })
+      .then(function (x) { return x.json(); })
+      .then(function (d) {
+        if (!d.ok) { lastError = d.error || 'http-room-error'; setState('error'); return; }
+        httpMode = true; setState(r === 'host' ? 'hosting' : 'connected'); httpPollLoop();
+      }).catch(function () { lastError = 'http-network'; setState('error'); });
+  }
+  function httpPollLoop() {
+    if (!httpMode) return;
+    fetch(httpBase(roomCode, 'poll', role), { method: 'POST' }).then(function (x) { return x.json(); }).then(function (d) {
+      (d.messages || []).forEach(function (m) { if (onMessage) onMessage(m); });
+    }).catch(function () {}).finally(function () { if (httpMode) httpPoll = setTimeout(httpPollLoop, 180); });
   }
 
   // ---- 房主 ----
@@ -175,6 +193,7 @@
   };
 
   NET.send = function (msg) {
+    if (useRelay() && httpMode) { fetch(httpBase(roomCode, 'send', role), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(msg) }).catch(function () {}); return true; }
     if (useRelay() && ws && ws.readyState === WebSocket.OPEN) {
       try { ws.send(JSON.stringify(msg)); return true; } catch (e) { return false; }
     }
@@ -185,6 +204,7 @@
   };
 
   NET.close = function () {
+    httpMode = false; if (httpPoll) { clearTimeout(httpPoll); httpPoll = null; }
     if (ws) { try { ws.close(); } catch (e) {} ws = null; }
     if (conn) { try { conn.close(); } catch (e) {} conn = null; }
     if (peer) { try { peer.destroy(); } catch (e) {} peer = null; }
