@@ -145,7 +145,10 @@
         if (e.side === 'p') {
           // 联机中本机 p 侧就是本人的阿斗；此处必须本地权威扣血，快照会立即同步给对手。
           S.hearts = Math.max(0, S.hearts - 1);
+          var bloodBun = 8 + Math.floor(G.wave * 0.5);
+          S.mantou += bloodBun;
           S.shakeT = 0.5;
+          ZY.Battle.fx('text', e.x, e.y - 55, '卖血 +' + bloodBun, '#d49a38');
           ZY.sfx('hit');
         } else if (!isPvp()) {
           // 单机时才结算 AI 一侧；联机 e 侧由对手自身结算，避免重复扣血。
