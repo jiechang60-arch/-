@@ -22,6 +22,7 @@
       save(s);
     }
     C.ITEM_KEYS.forEach(function (k) { if (typeof s[k] !== 'number' || isNaN(s[k])) s[k] = 0; });
+    if (!s.loadoutSeeded) { C.ITEM_KEYS.forEach(function (k) { if (!s[k]) s[k] = 1; }); s.loadoutSeeded = true; save(s); }
     if (!Array.isArray(s.activeLoadout)) s.activeLoadout = ['haste', 'shenbing'];
     return s;
   }
@@ -39,15 +40,6 @@
     }
     return null;
   };
-  IT.buy = function (id) {
-    if (!C.ITEMS[id]) return false;
-    var cost = C.ITEM_COSTS[id] || 0;
-    var coin = parseInt(A.storageGet('zy_coin') || '0', 10);
-    if (coin < cost) { ZY.UI.toast('金币不足，需要 ' + cost); return false; }
-    var s = load(); s[id] = (s[id] || 0) + 1; save(s);
-    A.storageSet('zy_coin', String(coin - cost));
-    ZY.UI.toast('购入：' + C.ITEMS[id].name); return true;
-  };
 
   // ---- 被动道具 ----
   // 农民只要库存中持有至少 1 个就会生效，不消耗库存、不按日重置。
@@ -55,10 +47,7 @@
   IT.update = function (dt) {
     var G = ZY.G;
     if (!G || G.scene !== 'play' || !G.p) return;
-    if (!G.p.passiveT) G.p.passiveT = { granary: 20, arsenal: 60, thunder: 45 };
-    if (IT.isPassiveActive('granary') && (G.p.passiveT.granary -= dt) <= 0) {
-      G.p.mantou += 5; G.p.passiveT.granary = 20; ZY.UI.toast('丰收令：馒头 +5');
-    }
+    if (!G.p.passiveT) G.p.passiveT = { arsenal: 60, thunder: 45 };
     if (IT.isPassiveActive('arsenal') && (G.p.passiveT.arsenal -= dt) <= 0) {
       for (var bi = 0; bi < G.p.bench.length; bi++) if (!G.p.bench[bi]) { G.p.bench[bi] = ZY.Board.makeShovel(); ZY.UI.toast('军械坊：铲子 +1'); break; }
       G.p.passiveT.arsenal = 60;
@@ -67,27 +56,7 @@
       for (var ei = 0; ei < G.enemies.length; ei++) if (!G.enemies[ei].dead && G.enemies[ei].side === 'p') ZY.Enemies.damage(G.enemies[ei], 80);
       G.p.passiveT.thunder = 45; ZY.Battle.fx('roar', A.DW / 2, ZY.L.mapY + ZY.L.mapH * 0.72); ZY.UI.toast('落雷阵发动');
     }
-    if (!IT.isPassiveActive('farmer')) return;
-    var cfg = C.ITEM_PASSIVE_CFG.farmer;
-    if (typeof G.p.farmerSpawnT !== 'number') G.p.farmerSpawnT = cfg.spawnCD;
-    var farmers = 0;
-    for (var uk in G.p.units) if (G.p.units[uk] && G.p.units[uk].kind === 'farm') farmers++;
-    if (farmers >= cfg.maxUnits) return;
-    G.p.farmerSpawnT -= dt;
-    if (G.p.farmerSpawnT > 0) return;
-    var spots = ZY.Map.buildOf('p');
-    for (var i = 0; i < spots.length; i++) {
-      var k = spots[i][0] + '_' + spots[i][1];
-      if (!G.p.units[k]) {
-        G.p.units[k] = ZY.Board.makeFarmer();
-        var pos = ZY.Map.cellCenter(spots[i][0], spots[i][1]);
-        ZY.Battle.fx('summon', pos.x, pos.y);
-        ZY.Battle.fx('text', pos.x, pos.y - 42, '农民自动上阵', '#5a8a3a');
-        ZY.UI.toast('被动道具：农民自动刷新');
-        break;
-      }
-    }
-    G.p.farmerSpawnT = cfg.spawnCD;
+    // 农民不再自动生成：它作为征兵卡刷出、由玩家放置并合成。
   };
 
   // ---- 目标选择状态 ----
@@ -96,7 +65,7 @@
 
   IT.beginTarget = function (id) {
     if (C.ITEMS[id] && C.ITEMS[id].target === 'passive') {
-      ZY.UI.toast('农民是被动道具，持有后会自动生效');
+      ZY.UI.toast('农民是被动道具，会让农民卡加入征兵池');
       return false;
     }
     if (!IT.count(id)) { ZY.UI.toast('道具数量不足'); return false; }
