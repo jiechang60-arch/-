@@ -29,11 +29,43 @@
   IT.save = save;
   IT.count = function (k) { return load()[k] || 0; };
 
+  // ---- 被动道具 ----
+  // 农民只要库存中持有至少 1 个就会生效，不消耗库存、不按日重置。
+  // 每局独立计时，达到上限后暂停；有空位时继续刷新。
+  IT.update = function (dt) {
+    var G = ZY.G;
+    if (!G || G.scene !== 'play' || !G.p || !IT.count('farmer')) return;
+    var cfg = C.ITEM_PASSIVE_CFG.farmer;
+    if (typeof G.p.farmerSpawnT !== 'number') G.p.farmerSpawnT = cfg.spawnCD;
+    var farmers = 0;
+    for (var uk in G.p.units) if (G.p.units[uk] && G.p.units[uk].kind === 'farm') farmers++;
+    if (farmers >= cfg.maxUnits) return;
+    G.p.farmerSpawnT -= dt;
+    if (G.p.farmerSpawnT > 0) return;
+    var spots = ZY.Map.buildOf('p');
+    for (var i = 0; i < spots.length; i++) {
+      var k = spots[i][0] + '_' + spots[i][1];
+      if (!G.p.units[k]) {
+        G.p.units[k] = ZY.Board.makeFarmer();
+        var pos = ZY.Map.cellCenter(spots[i][0], spots[i][1]);
+        ZY.Battle.fx('summon', pos.x, pos.y);
+        ZY.Battle.fx('text', pos.x, pos.y - 42, '农民自动上阵', '#5a8a3a');
+        ZY.UI.toast('被动道具：农民自动刷新');
+        break;
+      }
+    }
+    G.p.farmerSpawnT = cfg.spawnCD;
+  };
+
   // ---- 目标选择状态 ----
   // 使用需指定目标的道具时进入"瞄准模式"：pending = 道具 id
   IT.pending = null;
 
   IT.beginTarget = function (id) {
+    if (C.ITEMS[id] && C.ITEMS[id].target === 'passive') {
+      ZY.UI.toast('农民是被动道具，持有后会自动生效');
+      return false;
+    }
     if (!IT.count(id)) { ZY.UI.toast('道具数量不足'); return false; }
     IT.pending = id;
     ZY.UI.toast('点击' + targetHint(id));
@@ -177,3 +209,4 @@
 
   ZY.Items = IT;
 })();
+
