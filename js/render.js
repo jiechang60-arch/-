@@ -224,13 +224,20 @@
   };
 
   R.tileWhite = function (ctx, x, y, s) {
-    ctx.fillStyle = '#f2eee2';
-    ctx.fillRect(x + 2, y + 2, s - 4, s - 4);
-    ctx.fillStyle = 'rgba(180,170,148,0.6)';
-    ctx.fillRect(x + 2, y + s - 6, s - 4, 4);
-    ctx.strokeStyle = 'rgba(150,140,120,0.7)';
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(x + 2.5, y + 2.5, s - 5, s - 5);
+    // 建造格高亮：明显的浅色背景 + 粗描边 + 中心小圆点，区分于普通绿格
+    ctx.fillStyle = 'rgba(248,240,210,0.85)';
+    ctx.fillRect(x + 1, y + 1, s - 2, s - 2);
+    ctx.fillStyle = 'rgba(160,140,100,0.45)';
+    ctx.fillRect(x + 1, y + s - 5, s - 2, 4);
+    // 粗描边
+    ctx.strokeStyle = 'rgba(120,90,50,0.85)';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(x + 1.5, y + 1.5, s - 3, s - 3);
+    // 中心小圆点（"可建造"提示）
+    ctx.fillStyle = 'rgba(140,100,40,0.35)';
+    ctx.beginPath();
+    ctx.arc(x + s / 2, y + s / 2, 3, 0, Math.PI * 2);
+    ctx.fill();
   };
 
   // 路缘装饰：按主题切换尖石/火苗/沙丘/水沫/花瓣
@@ -1392,3 +1399,4 @@
 
   ZY.R = R;
 })();
+
