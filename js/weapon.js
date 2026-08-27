@@ -1,7 +1,7 @@
 // 武器系统：掉落、碎片合成、装备穿戴、持久化
 // 4品质（绿/蓝/紫/橙）×5件=20件武器
 // 绿/蓝成品直接掉落；紫需3碎片、橙需5碎片合成
-// 装备绑定到角色名（悟空/八戒/沙僧/唐三/白龙），游戏中按 generalName 查武器加成
+// 装备绑定到三国武将名；所有已获得武器永久保留，穿戴只改变装备关系
 (function () {
   var root = (typeof GameGlobal !== 'undefined') ? GameGlobal
     : (typeof window !== 'undefined') ? window : globalThis;
@@ -127,6 +127,11 @@
     if (!w) return false;
     // 橙色武器仅其 owner 可装备
     if (w.owner && w.owner !== generalName) return false;
+    // 同一件武器只能由一名武将穿戴；换人时自动从旧槽卸下。
+    // 被替换的旧武器仍留在 owned 库存中，不消耗、不失效。
+    Object.keys(s.equip).forEach(function (name) {
+      if (name !== generalName && s.equip[name] === wid) delete s.equip[name];
+    });
     s.equip[generalName] = wid;
     save();
     return true;
@@ -150,3 +155,4 @@
 
   ZY.Weapon = W;
 })();
+
