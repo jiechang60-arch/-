@@ -59,20 +59,20 @@
   // 征兵抽取权重（每次征兵直接替换整个备战席为5张随机卡牌，原版机制）
   C.RECRUIT_POOL = [
     { kind: 's', w: 70 },    // 士兵
-    { kind: 'f', w: 26 },    // 武将碎片
+    { kind: 'f', w: 18 },    // 武将碎片：降低武将出现频率
     { kind: 'shovel', w: 4 } // 铲子道具（可解锁任意绿色 block 格为 build 格）
   ];
 
   // 敌人（曹军）
   C.ENEMIES = {
-    zei:  { ch: '兵', hp: 60,   spd: 1.05, mantou: 2, size: 0.62 },
-    dao:  { ch: '卒', hp: 130,  spd: 0.9,  mantou: 3, size: 0.66 },
-    kou:  { ch: '将', hp: 280,  spd: 0.75, mantou: 5, size: 0.7  },
-    fei:  { ch: '骑', hp: 150,  spd: 1.5,  mantou: 4, size: 0.6  },
-    boss: { ch: '曹', hp: 1100, spd: 0.5,  mantou: 30, size: 0.95, boss: true }
+    zei:  { ch: '兵', hp: 60,   spd: 1.05, mantou: 1, size: 0.62 },
+    dao:  { ch: '卒', hp: 130,  spd: 0.9,  mantou: 1, size: 0.66 },
+    kou:  { ch: '将', hp: 280,  spd: 0.75, mantou: 1, size: 0.7  },
+    fei:  { ch: '骑', hp: 150,  spd: 1.5,  mantou: 1, size: 0.6  },
+    boss: { ch: '曹', hp: 1100, spd: 0.5,  mantou: 10, size: 0.95, boss: true }
   };
   C.hpMul = function (wave) {
-    return 1 + (wave - 1) * 0.3 + Math.pow(Math.max(0, wave - 6), 1.5) * 0.12;
+    return 1 + (wave - 1) * 0.52 + Math.pow(Math.max(0, wave - 5), 1.55) * 0.20;
   };
 
   C.ECON = {
@@ -115,7 +115,8 @@
   C.ITEM_KEYS = C.ITEM_ACTIVE_KEYS.concat(C.ITEM_PASSIVE_KEYS);
   // 被动道具列表（不显示在按钮栏，只在顶部显示"农 ×N 倒计时"）
   // 新玩家初始道具
-  C.ITEM_START = { farmer: 3, zhaoxian: 2, meteor: 1, haste: 1, shenbing: 1, granary: 1, arsenal: 1, warcry: 1, frost: 1, thunder: 1 };
+  C.ITEM_COSTS = { farmer: 30, zhaoxian: 18, meteor: 25, haste: 22, shenbing: 40, granary: 28, arsenal: 28, warcry: 35, frost: 32, thunder: 45 };
+  C.ITEM_START = { farmer: 0, zhaoxian: 0, meteor: 0, haste: 0, shenbing: 0, granary: 0, arsenal: 0, warcry: 0, frost: 0, thunder: 0 };
   // 被动道具效果：每 15 秒自动生成 1 个农民单位
   C.ITEM_PASSIVE_CFG = { farmer: { spawnCD: 15, maxUnits: 4 } };
 
