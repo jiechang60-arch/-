@@ -378,17 +378,16 @@
         ctx.restore();
         UI.itemButtons.push({ x: bx, y: by, w: ibW, h: ibH, item: id });
       }
-      // 被动农民状态：持有即生效，不需要点击且不会消耗。
+      // 农民被动仅解锁征兵池中的农民卡，农民需要玩家自行放置与合成。
       var farmerN = ZY.Items.count('farmer');
       if (farmerN > 0) {
-        var remain = G.p && typeof G.p.farmerSpawnT === 'number' ? Math.max(0, G.p.farmerSpawnT) : C.ITEM_PASSIVE_CFG.farmer.spawnCD;
         ctx.save();
         ctx.fillStyle = 'rgba(55,86,42,0.9)';
         R.roundRect(ctx, 18, 154, 142, 42, 8); ctx.fill();
         ctx.fillStyle = '#f2ead2';
         R.font(ctx, 18, true);
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText('被动·农民 ×' + farmerN + '　' + Math.ceil(remain) + 's', 89, 175);
+        ctx.fillText('被动·农民　征兵可刷', 89, 175);
         ctx.restore();
       }
       // 瞄准模式提示
@@ -581,7 +580,7 @@
     R.redButton(ctx, UI.buttons.itemShopBack);
     ctx.fillStyle = '#3a3126'; R.font(ctx, 42, true); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('道具商店与配置', DW / 2, 60);
-    ctx.fillStyle = '#7a6428'; R.font(ctx, 24, true); ctx.fillText('金币：' + (A.storageGet('zy_coin') || 0) + '　点击购买；主动栏点击已拥有道具可切换', DW / 2, 102);
+    ctx.fillStyle = '#7a6428'; R.font(ctx, 24, true); ctx.fillText('主动栏点击切换；下方六个被动为本局固定配置', DW / 2, 102);
     var active = ZY.Items.activeKeys();
     for (var si = 0; si < 2; si++) {
       var ax = DW / 2 - 180 + si * 190, ay = 124, id = active[si], ac = C.ITEMS[id];
@@ -596,7 +595,7 @@
       ctx.fillStyle = cf.color; R.roundRect(ctx, x, y, w, h, 10); ctx.fill();
       ctx.fillStyle = '#fff'; R.font(ctx, 27, true); ctx.fillText(cf.name + ' ×' + ZY.Items.count(id2), x + w / 2, y + 28);
       R.font(ctx, 16, false); ctx.fillText(cf.desc.slice(0, 19), x + w / 2, y + 56);
-      R.font(ctx, 20, true); ctx.fillText('购买 ' + C.ITEM_COSTS[id2] + ' 金币', x + w / 2, y + 84);
+      R.font(ctx, 20, true); ctx.fillText(C.ITEM_PASSIVE_KEYS.indexOf(id2) >= 0 ? '被动已配置' : '主动技能', x + w / 2, y + 84);
       UI.itemShopCards.push({ x: x, y: y, w: w, h: h, item: id2 });
     }
     drawToasts(ctx);
