@@ -78,6 +78,10 @@
   function relayConnect(code, nextRole) {
     role = nextRole; roomCode = code; lastError = ''; httpMode = false;
     setState(nextRole === 'host' ? 'registering' : 'connecting');
+    // 移动网络对 wss:// 的兼容性不稳定；默认使用已验证可达的 HTTPS 房间通道。
+    // 游戏每 180ms 同步一次，双人塔防的操作量足够低，稳定性优先于毫秒级延迟。
+    httpConnect(code, nextRole);
+    return;
     var opened = false;
     var relayTimer;
     try { ws = new WebSocket(ROOM_SERVER.replace(/\/$/, '') + '/room/' + code + '?role=' + nextRole); }
