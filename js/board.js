@@ -59,10 +59,11 @@
         dmg += weapon.dmg;
         shape = weapon.shape;
       }
+      if (ZY.Items && ZY.Items.isPassiveActive('warcry')) dmg = Math.round(dmg * 1.1);
       return {
-        dmg: dmg, itv: g.itv * C.GEN_LV_ITV_MUL(glv),
-        range: g.range, skill: g.skill, general: true, lv: glv,
-        weapon: weapon, weaponShape: shape
+        dmg: dmg, itv: g.itv * C.GEN_LV_ITV_MUL(glv) * (weapon && weapon.itvMul || 1),
+        range: g.range + (weapon && weapon.range || 0), skill: g.skill, general: true, lv: glv,
+        weapon: weapon, weaponShape: shape, weaponStun: weapon && weapon.stun || 0
       };
     }
     return { inert: true }; // 碎片/铲子不能作战
@@ -86,8 +87,8 @@
   };
 
   // 制造农民（技能道具）：上阵后每8秒产出2馒头，不参与战斗
-  B.makeFarmer = function () {
-    return { kind: 'farm', ch: '农', cd: 0, farmT: 0 };
+  B.makeFarmer = function (lv) {
+    return { kind: 'farm', ch: '农', lv: lv || 1, cd: 0, farmT: 0 };
   };
 
   // 农民产出tick（每帧调用；PvP 时对方侧产出以对方快照为准）
@@ -99,10 +100,11 @@
       u.farmT = (u.farmT || 0) + dt;
       if (u.farmT >= 8) {
         u.farmT -= 8;
-        S.mantou += 2;
+        var gain = 2 * (u.lv || 1);
+        S.mantou += gain;
         var cr = k.split('_');
         var p = M_().cellCenter(+cr[0], +cr[1]);
-        if (ZY.Battle && side === 'p') ZY.Battle.fx('text', p.x, p.y - 30, '+2', '#5a8a3a');
+        if (ZY.Battle && side === 'p') ZY.Battle.fx('text', p.x, p.y - 30, '+' + gain, '#5a8a3a');
       }
     }
   };
@@ -178,6 +180,9 @@
   B.tryMerge = function (a, b) {
     if (a.kind === 's' && b.kind === 's' && a.ch === b.ch && a.lv === b.lv && a.lv < C.MAX_LV) {
       return B.makeSoldier(a.ch, a.lv + 1);
+    }
+    if (a.kind === 'farm' && b.kind === 'farm' && (a.lv || 1) === (b.lv || 1) && (a.lv || 1) < C.MAX_LV) {
+      return B.makeFarmer((a.lv || 1) + 1);
     }
     return null;
   };
@@ -728,6 +733,7 @@
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('农', x, y - size * 0.02);
+      ctx.fillStyle = '#fff5c8'; R.font(ctx, size * 0.18, true); ctx.textAlign = 'left'; ctx.fillText('Lv' + (u.lv || 1), x - size * 0.44, y - size * 0.34);
       ctx.restore();
     } else if (u.kind === 'g') {
       // 旧式整武将（兼容）：双字竖排
