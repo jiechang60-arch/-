@@ -117,7 +117,7 @@
     var rnd = (ZY.Rng && ZY.Rng.rand) ? ZY.Rng.rand : Math.random;
     // 运气影响权重：铲子减少、碎片略增
     var wShovel = 4 * (1 - luck * 0.75);     // 4 → 1
-    var wFrag = 26 + luck * 6;               // 26 → 32
+    var wFrag = 18 + luck * 4;               // 玩家降低武将碎片频率，AI仅小幅补偿
     var wSoldier = 70;
     var totalW = wShovel + wFrag + wSoldier;
     var roll = rnd() * totalW;
@@ -138,7 +138,7 @@
       var pair = C.FRAG_MAP[oc][1];
       if (!own[pair]) wants.push(pair);
     }
-    var pairChance = 0.75 + luck * 0.20; // 0.75 → 0.95
+    var pairChance = 0.42 + luck * 0.18; // 降低“自动凑对”概率
     var fc = (wants.length && rnd() < pairChance)
       ? wants[(rnd() * wants.length) | 0]
       : C.FRAG_CHARS[(rnd() * C.FRAG_CHARS.length) | 0];
@@ -155,9 +155,16 @@
     }
     S.mantou -= cost;
     S.recruitCount++;
+    // 联机双方的征兵独立随机：同一局仍共用波次，但绝不会刷出同一手牌。
+    var bak = ZY.Rng && ZY.Rng.rand;
+    if (sideIsPlayer && ZY.MP && ZY.MP.active && ZY.Rng && ZY.Rng.curSeed != null) {
+      var roleSalt = ZY.MP.role === 'host' ? 0x51A7 : 0x9C31;
+      ZY.Rng.rand = ZY.Rng.derive((ZY.Rng.curSeed ^ roleSalt ^ (S.recruitCount * 0x45d9f3b)) >>> 0);
+    }
     for (var i = 0; i < C.ECON.benchSize; i++) {
       S.bench[i] = B.rollCard(S, luck);
     }
+    if (bak) ZY.Rng.rand = bak;
     if (sideIsPlayer) ZY.sfx('coin');
     return true;
   };
