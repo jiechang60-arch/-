@@ -11,7 +11,8 @@
   var roomCode = null;      // 6位房间码
   var onMessage = null;     // 由 mp.js 注入
   var onStateChange = null; // 状态回调（ lobby->connecting->connected->closed ）
-  var state = 'idle';       // idle | hosting | connecting | connected | closed | error
+  var state = 'idle';       // idle | registering | hosting | connecting | connected | closed | error
+  var lastError = '';
 
   // 免费信令 + STUN + 公益 TURN 兜底（严格 NAT 时经 TURN 中继）
   // STUN 含国内可达节点（小米/洋葱），提升跨省直连成功率
@@ -41,6 +42,7 @@
   NET.role = function () { return role; };
   NET.roomCode = function () { return roomCode; };
   NET.connected = function () { return !!(conn && conn.open); };
+  NET.lastError = function () { return lastError; };
 
   function peerId(code) { return 'ZYAD-' + code; }
 
@@ -61,12 +63,10 @@
       if (onMessage) onMessage(d);
     });
     c.on('close', function () {
-      conn = null;
-      setState('closed');
+      if (conn === c) { conn = null; setState('closed'); }
     });
-    c.on('error', function () {
-      conn = null;
-      setState('closed');
+    c.on('error', function (err) {
+      if (conn === c) { conn = null; lastError = (err && err.type) || 'datachannel-error'; setState('error'); }
     });
   }
 
@@ -79,10 +79,11 @@
     if (peer) { try { peer.destroy(); } catch (e) {} peer = null; }
     roomCode = genCode();
     role = 'host';
-    setState('hosting');
+    lastError = '';
+    setState('registering');
     peer = new Peer(peerId(roomCode), { config: ICE });
     peer.on('open', function () {
-      setState('hosting'); // 房间已注册，等待对手
+      setState('hosting'); // 信令已确认注册后才展示房间码
     });
     peer.on('connection', function (c) {
       if (conn && conn.open) { try { c.close(); } catch (e) {} return; } // 已有对手
@@ -95,6 +96,7 @@
         setTimeout(function () { NET.host(); }, 200);
         return;
       }
+      lastError = (err && err.type) || 'signal-error';
       setState('error');
     });
     return true;
@@ -108,24 +110,34 @@
     if (peer) { try { peer.destroy(); } catch (e) {} peer = null; }
     roomCode = code;
     role = 'guest';
+    lastError = '';
     setState('connecting');
     peer = new Peer({ config: ICE });
     peer.on('open', function () {
-      var c = peer.connect(peerId(code), { reliable: true });
-      wireConn(c);
-      // 连接超时：15秒
+      var attempts = 0;
+      function connectAttempt() {
+        attempts++;
+        var c = peer.connect(peerId(code), { reliable: true, serialization: 'json' });
+        wireConn(c);
+        c.on('error', function (err) {
+          // 房主刚创建时可能仍在信令注册，短暂重试可避免“房间不存在”误报。
+          if (!c.open && attempts < 4 && err && (err.type === 'peer-unavailable' || err.type === 'network')) {
+            setTimeout(connectAttempt, 1200);
+          }
+        });
+      }
+      connectAttempt();
+      // 连接超时：25秒（移动网络/TURN 建链比局域网更慢）
       setTimeout(function () {
         if (!conn || !conn.open) {
+          lastError = 'timeout';
           setState('error');
           if (peer) { try { peer.destroy(); } catch (e) {} peer = null; }
         }
-      }, 15000);
+      }, 25000);
     });
     peer.on('error', function (err) {
-      if (err && err.type === 'peer-unavailable') {
-        setState('error');
-        return;
-      }
+      lastError = (err && err.type) || 'signal-error';
       setState('error');
     });
     return { ok: true };
@@ -217,11 +229,12 @@
     }}, '进入对局 ⚔');
 
     function statusText() {
+      if (state === 'registering') return '正在发布房间，请稍候…';
       if (state === 'hosting') { codeBig.textContent = roomCode; return '房间已创建，等待好友加入…'; }
       if (state === 'connecting') return '正在连接房间 ' + roomCode + ' …';
       if (state === 'connected') return role === 'host' ? '好友已连上！' : '已连上房间！';
       if (state === 'closed') return '连接已断开（可重新创建/加入）';
-      if (state === 'error') return '连接失败，请重试（需双方同时在线）';
+      if (state === 'error') return '连接失败（' + (lastError || '网络') + '），请确认房主仍在房间后重试';
       return '选择创建或加入房间';
     }
 
