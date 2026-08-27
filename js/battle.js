@@ -88,7 +88,7 @@
         for (var i = 0; i < list.length; i++) {
           var e = list[i];
           if (Math.hypot(e.x - p.x, e.y - p.y) <= range) {
-            ZY.Enemies.damage(e, dmg, { stun: 1.0 });
+            ZY.Enemies.damage(e, dmg, { stun: 1.0, att: u });
             hitAny = true;
           }
         }
@@ -97,6 +97,8 @@
           syncAttackT(S, u, 0.35); // 触发文字变形（两字同步）
           BT.fx('roar', p.x, p.y);
           if (side === 'p') ZY.sfx('shoot');
+          // 张飞/张翼怒吼：每个被击的敌人都增加自身怒气
+          if (u.kind === 'g') addRage(u, 8);
         } else u.cd = 0.08;
         return;
       }
@@ -116,8 +118,13 @@
           if (d2 > range) continue;
           var a2 = Math.atan2(e2.y - p.y, e2.x - p.x);
           var diff = Math.abs(((a2 - ang + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
-          if (diff < 0.22) { ZY.Enemies.damage(e2, dmg); BT.fx('slash', e2.x, e2.y); }
+          if (diff < 0.22) {
+            ZY.Enemies.damage(e2, dmg, { att: u });
+            BT.fx('slash', e2.x, e2.y);
+          }
         }
+        // 赵云/马超冲锋：每命中一个敌人增加怒气
+        if (u.kind === 'g') addRage(u, 5);
         return;
       }
 
@@ -126,6 +133,11 @@
       u.cd = itv;
       syncAttackT(S, u, 0.35); // 触发文字变形（两字同步）
       var exec = st.skill === 'execute' && !target.boss && target.hp / target.maxHp < 0.35;
+      // 武将专用弹道：未装备武器时用 GENERAL_BULLET 定义的形状+颜色
+      var gConf = u.kind === 'g' ? C.GENERAL_BULLET[u.name] : null;
+      var useShape = (u.kind === 'g' && gConf && !st.weaponShape) ? gConf.shape
+                   : (u.kind === 's' ? u.ch : (st.skill === 'snipe' ? '弓' : null));
+      var useColor = (u.kind === 'g' && gConf && !st.weaponColor) ? gConf.color : null;
       G.bullets.push({
         x: p.x, y: p.y - L.cell * 0.2,
         target: target,
@@ -134,13 +146,35 @@
         exec: exec,
         arrow: u.kind === 's' && u.ch === '弓' || st.skill === 'snipe',
         gold: u.kind === 'g',
-        shape: u.kind === 's' ? u.ch : (st.skill === 'snipe' ? '弓' : null),
+        shape: useShape,
         weaponShape: st.weaponShape || null,
-        weaponColor: st.weapon ? C.WEAPON_QUALITY[st.weapon.quality].color : null
+        weaponColor: st.weaponColor || useColor || null,
+        src: u.kind === 'g' ? u : null   // 武将攻击者：用于击杀归因
       });
       if (side === 'p') ZY.sfx('shoot');
+      // 武将普通攻击：每次命中增加少量怒气
+      if (u.kind === 'g') addRage(u, 3);
     });
   }
+
+  // 怒气槽：每次调用增加指定值，封顶 100。武将击杀额外由 Enemies.damage/E.kill 流程触发 +30
+  function addRage(u, n) {
+    if (!u || u.kind !== 'g') return;
+    u.rage = Math.min(100, (u.rage || 0) + n);
+    if (u.pairedKey) {
+      var side = (u._side === 'p' ? ZY.G.p : ZY.G.e);
+      var pair = side.units[u.pairedKey];
+      if (pair) pair.rage = u.rage; // 半身同步怒气显示
+    }
+    if (u.rage >= 100 && !u.rageReady) {
+      u.rageReady = true;
+      var side2 = (u._side === 'p' ? ZY.G.p : ZY.G.e);
+      var pair2 = side2.units[u.pairedKey];
+      if (pair2) pair2.rageReady = true;
+      ZY.UI && ZY.UI.toast('⚡ ' + u.name + ' 怒气已满！点击头像释放大招');
+    }
+  }
+  BT.addRage = addRage;
 
   BT.update = function (dt) {
     var G = ZY.G;
@@ -154,7 +188,8 @@
       var d = Math.hypot(dx, dy);
       var step = bl.spd * dt;
       if (d <= step) {
-        ZY.Enemies.damage(bl.target, bl.dmg);
+        // 传 att（攻击者）给 damage/kill，便于击杀归因（怒气/经验）
+        ZY.Enemies.damage(bl.target, bl.dmg, bl.src ? { att: bl.src } : null);
         BT.fx('hit', bl.target.x, bl.target.y);
         if (bl.exec) BT.fx('text', bl.target.x, bl.target.y - 40, '斩!', '#8a2a1e');
         G.bullets.splice(b, 1);
@@ -172,7 +207,10 @@
   };
 
   BT.fx = function (type, x, y, a, b) {
-    var dur = { ink: 0.45, hit: 0.22, text: 1.0, slash: 0.28, lance: 0.25, roar: 0.4, summon: 0.9 }[type] || 0.5;
+    var dur = {
+      ink: 0.45, hit: 0.22, text: 1.0, slash: 0.28, lance: 0.25, roar: 0.4, summon: 0.9,
+      thrust: 0.5, shock: 0.7, arrow: 0.4, aura: 0.8, blade: 0.4
+    }[type] || 0.5;
     ZY.G.effects.push({ type: type, x: x, y: y, a: a, b: b, t: 0, dur: dur });
   };
 
@@ -294,6 +332,70 @@
         ctx.beginPath();
         ctx.arc(fx.x, fx.y, 16 + 66 * k, 0, Math.PI * 2);
         ctx.fill();
+      } else if (fx.type === 'thrust') {
+        // 赵云·龙胆突刺：一道金色光束沿角度射向范围末端
+        ctx.globalAlpha = (1 - k) * 0.85;
+        ctx.strokeStyle = '#ffd700';
+        ctx.lineWidth = 14 * (1 - k * 0.5);
+        ctx.shadowColor = '#fff0a0';
+        ctx.shadowBlur = 18;
+        ctx.beginPath();
+        ctx.moveTo(fx.x, fx.y);
+        ctx.lineTo(fx.x + Math.cos(fx.a) * (fx.b || 200), fx.y + Math.sin(fx.a) * (fx.b || 200));
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      } else if (fx.type === 'shock') {
+        // 张飞·喝断长坂：超大范围多层冲击波 + 文字"喝"
+        ctx.globalAlpha = 0.65 * (1 - k);
+        for (var sr = 0; sr < 3; sr++) {
+          ctx.strokeStyle = sr === 1 ? '#8a3a20' : '#3a1a10';
+          ctx.lineWidth = (4 - sr) * (1 - k * 0.5);
+          ctx.beginPath();
+          ctx.arc(fx.x, fx.y, 30 + sr * 60 + k * 100, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        if (k < 0.4) {
+          ctx.globalAlpha = 1 - k * 2.5;
+          R.font(ctx, 56, true);
+          ctx.fillStyle = '#8a2a1a';
+          ctx.textAlign = 'center';
+          ctx.fillText('喝！', fx.x, fx.y + 8);
+        }
+      } else if (fx.type === 'aura') {
+        // 刘备·仁德：金色脉冲光环
+        ctx.globalAlpha = 0.5 * (1 - k);
+        ctx.strokeStyle = '#e8a23a';
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.arc(fx.x, fx.y, 40 + k * 80, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(232,162,58,0.15)';
+        ctx.beginPath();
+        ctx.arc(fx.x, fx.y, 40 + k * 80, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (fx.type === 'arrow') {
+        // 黄忠·连珠箭：金色光箭 + 尾迹
+        ctx.globalAlpha = 1 - k * 0.6;
+        ctx.strokeStyle = '#e8c53a';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(fx.x - Math.cos(fx.a) * 40, fx.y - Math.sin(fx.a) * 40);
+        ctx.lineTo(fx.x + Math.cos(fx.a) * 50, fx.y + Math.sin(fx.a) * 50);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(232,197,90,0.4)';
+        ctx.lineWidth = 12;
+        ctx.stroke();
+      } else if (fx.type === 'blade') {
+        // 关羽·拖刀斩：半月弧光
+        ctx.globalAlpha = 1 - k;
+        ctx.strokeStyle = '#c0d8e8';
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(fx.x, fx.y, 60 + k * 30, fx.a - 0.6, fx.a + 0.6);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+        ctx.lineWidth = 14;
+        ctx.stroke();
       }
       ctx.restore();
     }
@@ -301,3 +403,4 @@
 
   ZY.Battle = BT;
 })();
+
