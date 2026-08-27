@@ -46,3 +46,4 @@
   ZY.sfxToggle = function () { enabled = !enabled; return enabled; };
   ZY.sfxEnabled = function () { return enabled; };
 })();
+
