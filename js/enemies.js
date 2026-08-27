@@ -142,11 +142,15 @@
       if (e.seg >= pts.length - 1) {
         e.dead = true;
         var S = e.side === 'p' ? G.p : G.e;
-        if (e.side === 'p' || !isPvp()) {
-          // 我方（或单机的敌方）扣心；PvP 时对方红心以对方快照为准
-          S.hearts -= 1;
+        if (e.side === 'p') {
+          // 联机中本机 p 侧就是本人的阿斗；此处必须本地权威扣血，快照会立即同步给对手。
+          S.hearts = Math.max(0, S.hearts - 1);
           S.shakeT = 0.5;
-          if (e.side === 'p') ZY.sfx('hit');
+          ZY.sfx('hit');
+        } else if (!isPvp()) {
+          // 单机时才结算 AI 一侧；联机 e 侧由对手自身结算，避免重复扣血。
+          S.hearts = Math.max(0, S.hearts - 1);
+          S.shakeT = 0.5;
         } else {
           S.shakeT = 0.5;
         }
