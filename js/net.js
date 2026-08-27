@@ -77,9 +77,11 @@
   function relayConnect(code, nextRole) {
     role = nextRole; roomCode = code; lastError = '';
     setState(nextRole === 'host' ? 'registering' : 'connecting');
+    var opened = false;
+    var relayTimer;
     try { ws = new WebSocket(ROOM_SERVER.replace(/\/$/, '') + '/room/' + code + '?role=' + nextRole); }
     catch (e) { lastError = 'websocket-create'; setState('error'); return; }
-    ws.onopen = function () { if (nextRole === 'host') setState('hosting'); else setState('connected'); };
+    ws.onopen = function () { opened = true; clearTimeout(relayTimer); if (nextRole === 'host') setState('hosting'); else setState('connected'); };
     ws.onmessage = function (ev) {
       var d; try { d = JSON.parse(ev.data); } catch (e) { return; }
       if (d && d._room === 'peer-joined') { setState('connected'); return; }
@@ -87,8 +89,14 @@
       if (d && d._room === 'missing') { lastError = 'room-not-found'; setState('error'); return; }
       if (onMessage) onMessage(d);
     };
-    ws.onerror = function () { lastError = 'websocket-network'; };
+    ws.onerror = function () { lastError = 'websocket-network'; if (!opened) setState('error'); };
     ws.onclose = function () { if (state !== 'idle' && state !== 'error') { lastError = lastError || 'websocket-closed'; setState('error'); } };
+    // 手机上的网络/浏览器可能让 WebSocket 一直处于 CONNECTING；明确超时并让用户看到原因。
+    relayTimer = setTimeout(function () {
+      if (!opened && ws && ws.readyState === WebSocket.CONNECTING) {
+        lastError = 'server-timeout'; try { ws.close(); } catch (e) {} setState('error');
+      }
+    }, 12000);
   }
 
   // ---- 房主 ----
