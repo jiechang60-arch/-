@@ -116,10 +116,13 @@
     luck = Math.max(0, Math.min(1, luck || 0));
     var rnd = (ZY.Rng && ZY.Rng.rand) ? ZY.Rng.rand : Math.random;
     // 运气影响权重：铲子减少、碎片略增
-    var wShovel = 4 * (1 - luck * 0.75);     // 4 → 1
-    var wFrag = 18 + luck * 4;               // 玩家降低武将碎片频率，AI仅小幅补偿
+    var wShovel = 4 * (1 - luck * 0.75);
+    var hasFarmer = ZY.Items && ZY.Items.isPassiveActive('farmer');
+    var hasRecruit = ZY.Items && ZY.Items.isPassiveActive('granary');
+    var wFarmer = hasFarmer ? 12 : 0;
+    var wFrag = (18 + luck * 4) * (hasRecruit ? 1.8 : 1);
     var wSoldier = 70;
-    var totalW = wShovel + wFrag + wSoldier;
+    var totalW = wShovel + wFrag + wSoldier + wFarmer;
     var roll = rnd() * totalW;
     var acc = 0;
     // 士兵
@@ -128,6 +131,9 @@
       var ch = C.SOLDIER_CHARS[(rnd() * C.SOLDIER_CHARS.length) | 0];
       return B.makeSoldier(ch, 1);
     }
+    // 农民是“道具解锁后的局内卡牌”，需要自己放置和二合一升级。
+    acc += wFarmer;
+    if (roll < acc) return B.makeFarmer(1);
     // 铲子
     acc += wShovel;
     if (roll < acc) return B.makeShovel();
