@@ -193,7 +193,7 @@
   // 武将半身制造（lv: 武将等级 1~5，影响伤害和攻击速度）
   // side: 'p'|'e'，用于武器加成只对玩家生效
   B.makeGeneralHalf = function (name, ch, half, pairedKey, lv, side) {
-    return { kind: 'g', name: name, ch: ch, half: half, pairedKey: pairedKey, lv: lv || 1, side: side, cd: 0, attackT: 0 };
+    return { kind: 'g', name: name, ch: ch, half: half, pairedKey: pairedKey, lv: lv || 1, side: side, _side: side, _lastKey: null, kills: 0, rage: 0, rageReady: false, cd: 0, attackT: 0 };
   };
 
   // 武将升级倍率（每级伤害×1.5，攻击间隔×0.85）
@@ -358,6 +358,7 @@
       }
       // 普通放置
       S.units[ck] = u;
+      if (u._lastKey !== undefined) u._lastKey = ck;
       S.bench[benchIdx] = null;
       return true;
     }
@@ -747,3 +748,4 @@
 
   ZY.Board = B;
 })();
+
