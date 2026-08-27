@@ -88,7 +88,7 @@
         for (var i = 0; i < list.length; i++) {
           var e = list[i];
           if (Math.hypot(e.x - p.x, e.y - p.y) <= range) {
-            ZY.Enemies.damage(e, dmg, { stun: 1.0, att: u });
+            ZY.Enemies.damage(e, dmg, { stun: Math.max(1.0, st.weaponStun || 0), att: u });
             hitAny = true;
           }
         }
@@ -119,7 +119,7 @@
           var a2 = Math.atan2(e2.y - p.y, e2.x - p.x);
           var diff = Math.abs(((a2 - ang + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
           if (diff < 0.22) {
-            ZY.Enemies.damage(e2, dmg, { att: u });
+            ZY.Enemies.damage(e2, dmg, { att: u, stun: st.weaponStun || 0 });
             BT.fx('slash', e2.x, e2.y);
           }
         }
@@ -149,7 +149,8 @@
         shape: useShape,
         weaponShape: st.weaponShape || null,
         weaponColor: st.weaponColor || useColor || null,
-        src: u.kind === 'g' ? u : null   // 武将攻击者：用于击杀归因
+        src: u.kind === 'g' ? u : null,
+        stun: st.weaponStun || 0
       });
       if (side === 'p') ZY.sfx('shoot');
       // 武将普通攻击：每次命中增加少量怒气
@@ -189,7 +190,7 @@
       var step = bl.spd * dt;
       if (d <= step) {
         // 传 att（攻击者）给 damage/kill，便于击杀归因（怒气/经验）
-        ZY.Enemies.damage(bl.target, bl.dmg, bl.src ? { att: bl.src } : null);
+        ZY.Enemies.damage(bl.target, bl.dmg, bl.src ? { att: bl.src, stun: bl.stun || 0 } : null);
         BT.fx('hit', bl.target.x, bl.target.y);
         if (bl.exec) BT.fx('text', bl.target.x, bl.target.y - 40, '斩!', '#8a2a1e');
         G.bullets.splice(b, 1);
