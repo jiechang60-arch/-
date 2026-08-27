@@ -28,13 +28,28 @@
   IT.load = load;
   IT.save = save;
   IT.count = function (k) { return load()[k] || 0; };
+  IT.isPassiveActive = function (k) { return C.ITEM_PASSIVE_KEYS.indexOf(k) >= 0 && IT.count(k) > 0; };
+  IT.activeKeys = function () { return C.ITEM_ACTIVE_KEYS.filter(function (k) { return IT.count(k) > 0; }).slice(0, C.ITEM_ACTIVE_SLOTS); };
 
   // ---- 被动道具 ----
   // 农民只要库存中持有至少 1 个就会生效，不消耗库存、不按日重置。
   // 每局独立计时，达到上限后暂停；有空位时继续刷新。
   IT.update = function (dt) {
     var G = ZY.G;
-    if (!G || G.scene !== 'play' || !G.p || !IT.count('farmer')) return;
+    if (!G || G.scene !== 'play' || !G.p) return;
+    if (!G.p.passiveT) G.p.passiveT = { granary: 20, arsenal: 60, thunder: 45 };
+    if (IT.isPassiveActive('granary') && (G.p.passiveT.granary -= dt) <= 0) {
+      G.p.mantou += 5; G.p.passiveT.granary = 20; ZY.UI.toast('丰收令：馒头 +5');
+    }
+    if (IT.isPassiveActive('arsenal') && (G.p.passiveT.arsenal -= dt) <= 0) {
+      for (var bi = 0; bi < G.p.bench.length; bi++) if (!G.p.bench[bi]) { G.p.bench[bi] = ZY.Board.makeShovel(); ZY.UI.toast('军械坊：铲子 +1'); break; }
+      G.p.passiveT.arsenal = 60;
+    }
+    if (IT.isPassiveActive('thunder') && (G.p.passiveT.thunder -= dt) <= 0) {
+      for (var ei = 0; ei < G.enemies.length; ei++) if (!G.enemies[ei].dead && G.enemies[ei].side === 'p') ZY.Enemies.damage(G.enemies[ei], 80);
+      G.p.passiveT.thunder = 45; ZY.Battle.fx('roar', A.DW / 2, ZY.L.mapY + ZY.L.mapH * 0.72); ZY.UI.toast('落雷阵发动');
+    }
+    if (!IT.isPassiveActive('farmer')) return;
     var cfg = C.ITEM_PASSIVE_CFG.farmer;
     if (typeof G.p.farmerSpawnT !== 'number') G.p.farmerSpawnT = cfg.spawnCD;
     var farmers = 0;
