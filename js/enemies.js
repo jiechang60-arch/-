@@ -176,7 +176,7 @@
     }
   };
 
-  E.kill = function (e) {
+  E.kill = function (e, att) {
     if (e.dead) return;
     e.dead = true;
     var G = ZY.G;
@@ -188,6 +188,11 @@
         G.kills = (G.kills || 0) + 1;
         ZY.Battle.fx('text', e.x, e.y - 30, '+' + e.mantou, '#7a6428');
       }
+    }
+    // 击杀归因：给攻击者武将 +30 怒气 +1 经验，检查升级
+    if (att && att.kind === 'g' && e.side === att._side) {
+      if (ZY.Battle && ZY.Battle.addRage) ZY.Battle.addRage(att, 30);
+      giveXpAndLevel(att);
     }
     ZY.Battle.fx('ink', e.x, e.y);
     // 领主击杀：玩家侧触发武器掉落与道具奖励
@@ -205,6 +210,39 @@
     }
   };
 
+  // 武将击杀经验累加并自动升级（满级 5）
+  function giveXpAndLevel(u) {
+    if (!u || u.kind !== 'g') return;
+    var side = u._side === 'p' ? ZY.G.p : ZY.G.e;
+    u.kills = (u.kills || 0) + 1;
+    var table = C.GEN_XP_TABLE;
+    var newLv = 1;
+    for (var i = 1; i < table.length; i++) {
+      if (u.kills >= table[i]) newLv = i + 1;
+    }
+    if (newLv > (u.lv || 1) && newLv <= C.GEN_MAX_LV_FROM_XP) {
+      u.lv = newLv;
+      // 半身同步等级
+      if (u.pairedKey) {
+        var pair = side.units[u.pairedKey];
+        if (pair) pair.lv = newLv;
+      }
+      // 升级特效 + 提示（从单位字典反查所在格子定位特效）
+      var pos = { x: 0, y: 0 };
+      for (var k in side.units) {
+        if (side.units[k] === u || side.units[k] === pair) {
+          var cr = k.split('_');
+          pos = ZY.Map.cellCenter(+cr[0], +cr[1]);
+          break;
+        }
+      }
+      ZY.Battle.fx('text', pos.x, pos.y - 50, '⬆ ' + u.name + ' Lv.' + newLv + '!', '#b8860b');
+      ZY.Battle.fx('summon', pos.x, pos.y);
+      if (u._side === 'p') ZY.sfx('summon');
+    }
+  }
+  E.giveXpAndLevel = giveXpAndLevel;
+
   E.damage = function (e, dmg, opt) {
     if (e.dead) return;
     opt = opt || {};
@@ -212,7 +250,7 @@
     e.flashT = 0.1;
     if (opt.stun) e.stunT = Math.max(e.stunT, opt.stun);
     if (opt.slow) e.slowT = Math.max(e.slowT, opt.slow);
-    if (e.hp <= 0) E.kill(e);
+    if (e.hp <= 0) E.kill(e, opt.att);
   };
 
   E.draw = function (ctx) {
@@ -235,3 +273,4 @@
 
   ZY.Enemies = E;
 })();
+
