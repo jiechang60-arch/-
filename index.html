@@ -13,6 +13,8 @@
 </head>
 <body>
   <div id="stage"><canvas id="cv"></canvas></div>
+  <!-- 跨省好友联机走 Cloudflare 房间服务器，不依赖手机之间的 P2P 打洞。 -->
+  <script>window.ZYAD_ROOM_SERVER = 'wss://zyad-room-server.jiechang60.workers.dev';</script>
   <script src="libs/peerjs.min.js"></script>
   <script src="js/adapter.js"></script>
   <script src="js/config.js"></script>
@@ -33,3 +35,4 @@
   <script src="js/main.js"></script>
 </body>
 </html>
+
