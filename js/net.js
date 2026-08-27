@@ -13,6 +13,9 @@
   var onStateChange = null; // 状态回调（ lobby->connecting->connected->closed ）
   var state = 'idle';       // idle | registering | hosting | connecting | connected | closed | error
   var lastError = '';
+  var ws = null;
+  var ROOM_SERVER = root.ZYAD_ROOM_SERVER || '';
+  function useRelay() { return /^wss:\/\//i.test(ROOM_SERVER); }
 
   // 免费信令 + STUN + 公益 TURN 兜底（严格 NAT 时经 TURN 中继）
   // STUN 含国内可达节点（小米/洋葱），提升跨省直连成功率
@@ -41,7 +44,7 @@
   NET.state = function () { return state; };
   NET.role = function () { return role; };
   NET.roomCode = function () { return roomCode; };
-  NET.connected = function () { return !!(conn && conn.open); };
+  NET.connected = function () { return useRelay() ? !!(ws && ws.readyState === WebSocket.OPEN) : !!(conn && conn.open); };
   NET.lastError = function () { return lastError; };
 
   function peerId(code) { return 'ZYAD-' + code; }
@@ -70,8 +73,27 @@
     });
   }
 
+  // 服务器转发模式：跨省时双方都连同一个 WebSocket 房间，不再依赖 NAT 打洞。
+  function relayConnect(code, nextRole) {
+    role = nextRole; roomCode = code; lastError = '';
+    setState(nextRole === 'host' ? 'registering' : 'connecting');
+    try { ws = new WebSocket(ROOM_SERVER.replace(/\/$/, '') + '/room/' + code + '?role=' + nextRole); }
+    catch (e) { lastError = 'websocket-create'; setState('error'); return; }
+    ws.onopen = function () { if (nextRole === 'host') setState('hosting'); else setState('connected'); };
+    ws.onmessage = function (ev) {
+      var d; try { d = JSON.parse(ev.data); } catch (e) { return; }
+      if (d && d._room === 'peer-joined') { setState('connected'); return; }
+      if (d && d._room === 'full') { lastError = 'room-full'; setState('error'); return; }
+      if (d && d._room === 'missing') { lastError = 'room-not-found'; setState('error'); return; }
+      if (onMessage) onMessage(d);
+    };
+    ws.onerror = function () { lastError = 'websocket-network'; };
+    ws.onclose = function () { if (state !== 'idle' && state !== 'error') { lastError = lastError || 'websocket-closed'; setState('error'); } };
+  }
+
   // ---- 房主 ----
   NET.host = function () {
+    if (useRelay()) { relayConnect(genCode(), 'host'); return true; }
     if (typeof Peer === 'undefined') {
       setState('error');
       return false;
@@ -106,6 +128,7 @@
   NET.join = function (code) {
     code = String(code || '').trim().toUpperCase();
     if (!/^[A-Z2-9]{6}$/.test(code)) return { ok: false, msg: '房间码格式不对（6位字母/数字）' };
+    if (useRelay()) { relayConnect(code, 'guest'); return { ok: true }; }
     if (typeof Peer === 'undefined') return { ok: false, msg: '联机组件未加载' };
     if (peer) { try { peer.destroy(); } catch (e) {} peer = null; }
     roomCode = code;
@@ -144,6 +167,9 @@
   };
 
   NET.send = function (msg) {
+    if (useRelay() && ws && ws.readyState === WebSocket.OPEN) {
+      try { ws.send(JSON.stringify(msg)); return true; } catch (e) { return false; }
+    }
     if (conn && conn.open) {
       try { conn.send(msg); return true; } catch (e) {}
     }
@@ -151,6 +177,7 @@
   };
 
   NET.close = function () {
+    if (ws) { try { ws.close(); } catch (e) {} ws = null; }
     if (conn) { try { conn.close(); } catch (e) {} conn = null; }
     if (peer) { try { peer.destroy(); } catch (e) {} peer = null; }
     role = null; roomCode = null;
