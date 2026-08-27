@@ -27,6 +27,9 @@
         }
       } catch (e) { /* 损坏数据重置 */ }
     }
+    // 名称升级兼容：保留旧存档中赵云已装备的武器。
+    if (state.equip['赵云'] && !state.equip['常帅']) state.equip['常帅'] = state.equip['赵云'];
+    if (state.equip['赵云']) { delete state.equip['赵云']; save(); }
     return state;
   }
   function save() {
@@ -62,18 +65,24 @@
 
   // 领主击杀掉落：按概率绿10/蓝5/紫2/橙1
   // 返回掉落信息 { type:'weapon'|'frag', wid } 或 null
-  W.rollDrop = function () {
+  W.rollDrop = function (wave, boss) {
     var s = load();
     // 按品质概率滚动：先按概率决定品质，再在该品质未拥有的武器里随机
     // 多次仍未掉落则返回 null（保底：绿/蓝成品若已全拥有，则掉碎片给紫/橙）
     var order = ['green', 'blue', 'purple', 'orange'];
     // 各品质独立判定（互斥取最高品质）：实际按"橙>紫>蓝>绿"优先级判断
+    wave = Math.max(1, wave || 1);
+    var boost = boss ? 1.8 : 1;
+    var pOrange = Math.min(0.06, (0.004 + wave * 0.0015) * boost);
+    var pPurple = Math.min(0.18, (0.018 + wave * 0.004) * boost);
+    var pBlue = Math.min(0.30, (0.06 + wave * 0.006) * boost);
+    var pGreen = Math.min(0.55, (0.18 + wave * 0.01) * boost);
     var roll = Math.random();
     var dropQ = null;
-    if (roll < C.WEAPON_QUALITY.orange.drop) dropQ = 'orange';
-    else if (roll < C.WEAPON_QUALITY.orange.drop + C.WEAPON_QUALITY.purple.drop) dropQ = 'purple';
-    else if (roll < C.WEAPON_QUALITY.orange.drop + C.WEAPON_QUALITY.purple.drop + C.WEAPON_QUALITY.blue.drop) dropQ = 'blue';
-    else if (roll < C.WEAPON_QUALITY.orange.drop + C.WEAPON_QUALITY.purple.drop + C.WEAPON_QUALITY.blue.drop + C.WEAPON_QUALITY.green.drop) dropQ = 'green';
+    if (roll < pOrange) dropQ = 'orange';
+    else if (roll < pOrange + pPurple) dropQ = 'purple';
+    else if (roll < pOrange + pPurple + pBlue) dropQ = 'blue';
+    else if (roll < pOrange + pPurple + pBlue + pGreen) dropQ = 'green';
     if (!dropQ) return null;
 
     var qCfg = C.WEAPON_QUALITY[dropQ];
