@@ -178,6 +178,24 @@
   };
 
   // ---- 帧驱动（main.js 每帧调用）----
+  // 镜像 cell key：8列×10行 地图是上下对称的，把对手的 (c, r) 翻到自己的对称位置
+  // 这样对手的"我方半场"显示在 guest 的上半屏
+  function mirrorKey(k) {
+    var cr = k.split('_');
+    return (7 - +cr[0]) + '_' + (9 - +cr[1]);
+  }
+  function mirrorUnits(units) {
+    var out = {};
+    for (var k in units) {
+      var u = units[k];
+      var copy = {};
+      for (var k2 in u) copy[k2] = u[k2];
+      if (u.pairedKey) copy.pairedKey = mirrorKey(u.pairedKey);
+      out[mirrorKey(k)] = copy;
+    }
+    return out;
+  }
+
   MP.update = function (dt) {
     if (!MP.active) return;
     var G = ZY.G;
@@ -223,12 +241,12 @@
       }
     }
 
-    // 应用远端快照到 e 侧（显示层）
+    // 应用远端快照到 e 侧（显示层）：单位 cell key 与 pairedKey 需镜像
     if (remoteSide && G.scene === 'play') {
       G.e.mantou = remoteSide.mantou;
       G.e.hearts = remoteSide.hearts;
       G.e.hasteT = remoteSide.hasteT;
-      G.e.units = remoteSide.units;
+      G.e.units = mirrorUnits(remoteSide.units);
       G.e.bench = remoteSide.bench;
     }
   };
@@ -256,3 +274,4 @@
 
   ZY.MP = MP;
 })();
+
