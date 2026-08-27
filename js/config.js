@@ -39,9 +39,15 @@
     '关': ['关羽', '羽'], '羽': ['关羽', '关'],
     '张': ['张飞', '飞'], '飞': ['张飞', '张'],
     '黄': ['黄忠', '忠'], '忠': ['黄忠', '黄'],
-    '刘': ['刘备', '备'], '备': ['刘备', '刘']
+    '刘': ['刘备', '备'], '备': ['刘备', '刘'],
+    '平': ['关平', '关'],
+    '兴': ['关兴', '关'],
+    '苞': ['张苞', '张'],
+    '翼': ['张翼', '张'],
+    '祖': ['黄祖', '黄'],
+    '盖': ['黄盖', '黄']
   };
-  C.FRAG_CHARS = ['常', '帅', '马', '超', '关', '羽', '张', '飞', '黄', '忠', '刘', '备'];
+  C.FRAG_CHARS = ['常', '帅', '马', '超', '关', '羽', '平', '兴', '张', '飞', '苞', '翼', '黄', '忠', '祖', '盖', '刘', '备'];
 
   // 武将基础数值（已下调，需配武器才能恢复强度）
   // 未装备武器时只有基础攻击；装备武器后伤害+武器加成，攻击特效变为武器造型
@@ -52,9 +58,15 @@
     '张飞': { dmg: 72,  itv: 1.2,  range: 1.8, skill: 'stun',    desc: '当阳断喝·震慑群敌' },
     '黄忠': { dmg: 51,  itv: 0.38, range: 4.5, skill: 'snipe',   desc: '百步穿杨·箭无虚发' },
     '刘备': { dmg: 36,  itv: 1.0,  range: 2.6, skill: 'aura',    desc: '仁德·友军攻击+20%' }
+    , '关平': { dmg: 72, itv: 0.75, range: 2.4, skill: 'execute', desc: '青龙余威·处决残敌' }
+    , '关兴': { dmg: 64, itv: 0.6, range: 2.8, skill: 'pierce', desc: '将门连刺·直线贯穿' }
+    , '张苞': { dmg: 60, itv: 0.85, range: 2.1, skill: 'stun', desc: '猛将震击·短暂控制' }
+    , '张翼': { dmg: 45, itv: 0.55, range: 3.1, skill: 'snipe', desc: '翼箭·远程速射' }
+    , '黄祖': { dmg: 40, itv: 0.52, range: 3.4, skill: 'snipe', desc: '江夏箭阵·远程压制' }
+    , '黄盖': { dmg: 58, itv: 1.0, range: 2.0, skill: 'stun', desc: '苦肉冲阵·群体震慑' }
   };
   // 6位主角名（用于武器装备绑定）
-  C.GENERAL_NAMES = ['常帅', '马超', '关羽', '张飞', '黄忠', '刘备'];
+  C.GENERAL_NAMES = ['常帅', '马超', '关羽', '张飞', '黄忠', '刘备', '关平', '关兴', '张苞', '张翼', '黄祖', '黄盖'];
 
   // 征兵抽取权重（每次征兵直接替换整个备战席为5张随机卡牌，原版机制）
   C.RECRUIT_POOL = [
@@ -96,16 +108,16 @@
   // 主动道具（按按钮使用，消耗库存）：招贤令/陨石/攻速符/神兵符
   // 被动道具（持有即自动生效）：农民
   C.ITEMS = {
-    farmer:   { name: '农民',   ch: '农', color: '#5a8a3a', desc: '被动：每 15 秒自动在己方空地生成 1 个农民，每 8 秒 +2 馒头', target: 'passive' },
+    farmer:   { name: '农民',   ch: '农', color: '#5a8a3a', desc: '被动：征兵时有机会刷出可放置、可合成的农民', target: 'passive' },
     zhaoxian: { name: '招贤令', ch: '贤', color: '#4a8ad4', desc: '免费重抽备战席5张卡',   target: 'none',   cd: 0 },
     meteor:   { name: '陨石',   ch: '陨', color: '#a8402c', desc: '天降陨石：范围内敌军重创（约150伤）', target: 'any', cd: 0 },
     haste:    { name: '攻速符', ch: '速', color: '#a85ef0', desc: '全军攻击速度×2，持续8秒', target: 'none',  cd: 0 },
     shenbing: { name: '神兵符', ch: '神', color: '#e8a23a', desc: '选择一名武将，等级+1（上限Lv5）', target: 'general', cd: 0 },
-    granary:   { name: '丰收令', ch: '粮', color: '#d49a38', desc: '被动：每20秒获得5馒头', target: 'passive' },
-    arsenal:   { name: '军械坊', ch: '械', color: '#72859a', desc: '被动：每60秒补充1把铲子', target: 'passive' },
-    warcry:    { name: '战鼓', ch: '鼓', color: '#c34b3f', desc: '被动：全军伤害提高10%', target: 'passive' },
-    frost:     { name: '寒霜阵', ch: '霜', color: '#58a9ce', desc: '被动：敌军移动速度降低10%', target: 'passive' },
-    thunder:   { name: '落雷阵', ch: '雷', color: '#8665cf', desc: '被动：每45秒对全场敌军造成80伤害', target: 'passive' }
+    granary:   { name: '招贤榜', ch: '贤', color: '#d49a38', desc: '被动：提高武将文字出现概率', target: 'passive' },
+    arsenal:   { name: '洛阳铲', ch: '铲', color: '#72859a', desc: '被动：每60秒补充1把铲子', target: 'passive' },
+    warcry:    { name: '摸金校尉', ch: '金', color: '#c34b3f', desc: '被动：铲地额外获得馒头', target: 'passive' },
+    frost:     { name: '淤泥', ch: '泥', color: '#58a9ce', desc: '被动：敌军移动速度降低10%', target: 'passive' },
+    thunder:   { name: '陨石', ch: '陨', color: '#8665cf', desc: '被动：危急时自动轰击敌军', target: 'passive' }
   };
   // 主动道具显示为可点击按钮；ITEM_KEYS 是全部库存键（含被动）
   C.ITEM_ACTIVE_KEYS = ['zhaoxian', 'meteor', 'haste', 'shenbing'];
@@ -115,10 +127,7 @@
   C.ITEM_KEYS = C.ITEM_ACTIVE_KEYS.concat(C.ITEM_PASSIVE_KEYS);
   // 被动道具列表（不显示在按钮栏，只在顶部显示"农 ×N 倒计时"）
   // 新玩家初始道具
-  C.ITEM_COSTS = { farmer: 30, zhaoxian: 18, meteor: 25, haste: 22, shenbing: 40, granary: 28, arsenal: 28, warcry: 35, frost: 32, thunder: 45 };
-  C.ITEM_START = { farmer: 0, zhaoxian: 0, meteor: 0, haste: 0, shenbing: 0, granary: 0, arsenal: 0, warcry: 0, frost: 0, thunder: 0 };
-  // 被动道具效果：每 15 秒自动生成 1 个农民单位
-  C.ITEM_PASSIVE_CFG = { farmer: { spawnCD: 15, maxUnits: 4 } };
+  C.ITEM_START = { farmer: 1, zhaoxian: 1, meteor: 1, haste: 1, shenbing: 1, granary: 1, arsenal: 1, warcry: 1, frost: 1, thunder: 1 };
 
   // ============ 武器系统 ============
   // 4品质 × 6件 = 24件武器
@@ -167,9 +176,8 @@
 
   // 玩家军职（11 级）：每级 5 阶，每阶满 5 星后再通关一次升下一阶
   C.RANKS = [
-    '士卒', '伍长', '什长', '都伯', '百人将',
-    '军侯', '司马', '都尉', '校尉', '中郎将',
-    '大将军'
+    '军士', '校尉', '少将', '中将', '上将',
+    '大将', '元帅', '诸侯', '霸主', '君主', '皇帝'
   ];
   C.SUB_LEVELS = ['一', '二', '三', '四', '五'];
   C.SUB_LEVELS_PER_RANK = 5;
