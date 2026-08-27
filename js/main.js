@@ -57,9 +57,11 @@
     ZY.Battle.reset();
     ZY.AI.reset();
     if (G_isPvp()) {
-      // PvP：双方初始手牌同种子（公平），对方手牌只做显示
+      // PvP：波次同种子保证公平；双方初始手牌使用不同随机流。
       var seed = ZY.Rng.curSeed || 0;
-      var rA = ZY.Rng.derive(seed ^ 0xA1), rB = ZY.Rng.derive(seed ^ 0xB2);
+      var localSalt = ZY.MP.role === 'host' ? 0x51A7 : 0x9C31;
+      var remoteSalt = ZY.MP.role === 'host' ? 0x9C31 : 0x51A7;
+      var rA = ZY.Rng.derive(seed ^ localSalt), rB = ZY.Rng.derive(seed ^ remoteSalt);
       // 备份全局随机源，临时替换保证双方一致
       var bak = ZY.Rng.rand;
       ZY.Rng.rand = rA;
@@ -256,9 +258,11 @@
     }
     // 武器库界面：独立交互
     if (ZY.weaponLibOpen) { onWeaponLibDown(x, y); return; }
+    if (ZY.itemShopOpen) { onItemShopDown(x, y); return; }
     if (!G || G.scene === 'start') {
       if (ub.avatar && R.inside(ub.avatar, x, y)) { ZY.sfx('click'); ZY.UI.avatarPickerOpen = true; return; }
       if (ub.weaponLib && R.inside(ub.weaponLib, x, y)) { ZY.sfx('click'); ZY.weaponLibOpen = true; return; }
+      if (ub.itemShop && R.inside(ub.itemShop, x, y)) { ZY.sfx('click'); ZY.itemShopOpen = true; return; }
       if (ub.online && R.inside(ub.online, x, y)) { ZY.sfx('click'); if (ZY.MP) ZY.MP.openLobby(); return; }
       if (R.inside(ub.start, x, y)) { ZY.sfx('click'); newGame(); }
       return;
@@ -353,6 +357,19 @@
     }
   }
 
+  function onItemShopDown(x, y) {
+    var ub = ZY.UI.buttons;
+    if (R.inside(ub.itemShopBack, x, y)) { ZY.itemShopOpen = false; ZY.sfx('click'); return; }
+    var cards = ZY.UI.itemShopCards || [];
+    for (var i = 0; i < cards.length; i++) if (R.inside(cards[i], x, y)) {
+      if (cards[i].slot != null) {
+        var id = ZY.Items.cycleActive(cards[i].slot);
+        ZY.UI.toast(id ? '主动栏已切换为：' + C.ITEMS[id].name : '请先购买主动道具');
+      } else if (cards[i].item) ZY.Items.buy(cards[i].item);
+      return;
+    }
+  }
+
   function onWeaponLibMove(x, y) {
     var d = ZY.UI.weaponDrag;
     if (!d) return;
@@ -390,13 +407,13 @@
 
   function onMove(x, y) {
     var G = ZY.G;
-    if (ZY.weaponLibOpen) { onWeaponLibMove(x, y); return; }
+    if (ZY.weaponLibOpen || ZY.itemShopOpen) { if (ZY.weaponLibOpen) onWeaponLibMove(x, y); return; }
     if (G && G.scene === 'play') ZY.Board.onMove(x, y);
   }
 
   function onUp(x, y) {
     var G = ZY.G;
-    if (ZY.weaponLibOpen) { onWeaponLibUp(x, y); return; }
+    if (ZY.weaponLibOpen || ZY.itemShopOpen) { if (ZY.weaponLibOpen) onWeaponLibUp(x, y); return; }
     if (G && G.scene === 'play') {
       ZY.Board.onUp(x, y);
       // 放置后扫描相邻碎片自动合成武将（覆盖所有放置路径）
@@ -463,6 +480,7 @@
       } else {
         ZY.UI.update(dt);
         if (ZY.weaponLibOpen) ZY.UI.drawWeaponLib(ctx);
+        else if (ZY.itemShopOpen) ZY.UI.drawItemShop(ctx);
         else ZY.UI.drawStart(ctx);
       }
     }
