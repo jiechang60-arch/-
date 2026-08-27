@@ -114,7 +114,8 @@
       if (e.dead) continue;
       if (e.flashT > 0) e.flashT -= dt;
       if (e.stunT > 0) { e.stunT -= dt; continue; }
-      var spd = e.spd * (e.slowT > 0 ? 0.5 : 1);
+      var frostMul = (e.side === 'p' && ZY.Items && ZY.Items.isPassiveActive('frost')) ? 0.9 : 1;
+      var spd = e.spd * frostMul * (e.slowT > 0 ? 0.5 : 1);
       if (e.slowT > 0) e.slowT -= dt;
 
       var pts = ZY.Map.pathPoints(e.side);
@@ -172,6 +173,13 @@
       ZY.UI.toast('第 ' + G.wave + ' 波告破 · 犒赏 ' + bonus + ' 馒头');
       // 波次奖励：有几率获得技能道具（永久保留，永不重置）
       if (ZY.Items) ZY.Items.onWaveCleared(G.wave);
+      if (ZY.Weapon && G.wave >= 2) {
+        var waveDrop = ZY.Weapon.rollDrop(G.wave, false);
+        if (waveDrop) {
+          G.drops = G.drops || []; G.drops.push({ wid: waveDrop.wid, type: waveDrop.type });
+          ZY.UI.toast('波次掉落：' + C.WEAPON_MAP[waveDrop.wid].name);
+        }
+      }
       ZY.sfx('coin');
     }
   };
@@ -197,7 +205,7 @@
     ZY.Battle.fx('ink', e.x, e.y);
     // 领主击杀：玩家侧触发武器掉落与道具奖励
     if (e.boss && e.side === 'p' && ZY.Weapon) {
-      var drop = ZY.Weapon.rollDrop();
+      var drop = ZY.Weapon.rollDrop(G.wave, true);
       if (drop) {
         var w = C.WEAPON_MAP[drop.wid];
         var qCfg = C.WEAPON_QUALITY[w.quality];
