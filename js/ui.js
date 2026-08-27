@@ -179,6 +179,8 @@
     // 武器库入口按钮（右下角，上移100左移50）
     UI.buttons.weaponLib = { x: DW - 250, y: DH - 176, w: 180, h: 56, label: '兵器库 ⚔', fs: 28 };
     R.redButton(ctx, UI.buttons.weaponLib);
+    UI.buttons.itemShop = { x: DW / 2 - 90, y: DH - 176, w: 180, h: 56, label: '道具配置', fs: 28 };
+    R.redButton(ctx, UI.buttons.itemShop);
 
     // 本版本的核心规则：开局不消耗体力，库存与穿戴永久保留。
     ctx.save();
@@ -570,6 +572,35 @@
   UI.weaponCraftBtns = [];  // 可合成武器的合成按钮 [{x,y,w,h,wid}]
   UI.weaponDrag = null;     // 拖拽中的武器 {wid,x,y}
   UI.weaponScroll = 0;      // 列表滚动偏移（暂未实现滚动，预留）
+
+  UI.drawItemShop = function (ctx) {
+    var DW = A.DW, DH = A.DH;
+    ctx.fillStyle = '#efe5ce'; ctx.fillRect(0, 0, DW, DH);
+    UI.itemShopCards = [];
+    UI.buttons.itemShopBack = { x: 26, y: 26, w: 130, h: 52, label: '← 返回', fs: 24 };
+    R.redButton(ctx, UI.buttons.itemShopBack);
+    ctx.fillStyle = '#3a3126'; R.font(ctx, 42, true); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('道具商店与配置', DW / 2, 60);
+    ctx.fillStyle = '#7a6428'; R.font(ctx, 24, true); ctx.fillText('金币：' + (A.storageGet('zy_coin') || 0) + '　点击购买；主动栏点击已拥有道具可切换', DW / 2, 102);
+    var active = ZY.Items.activeKeys();
+    for (var si = 0; si < 2; si++) {
+      var ax = DW / 2 - 180 + si * 190, ay = 124, id = active[si], ac = C.ITEMS[id];
+      ctx.fillStyle = ac ? ac.color : '#777'; R.roundRect(ctx, ax, ay, 170, 62, 10); ctx.fill();
+      ctx.fillStyle = '#fff'; R.font(ctx, 24, true); ctx.fillText((si + 1) + '号主动：' + (ac ? ac.name : '未配置'), ax + 85, ay + 31);
+      UI.itemShopCards.push({ x: ax, y: ay, w: 170, h: 62, slot: si });
+    }
+    var keys = C.ITEM_KEYS, cols = 3, w = 210, h = 105, gap = 18;
+    for (var i = 0; i < keys.length; i++) {
+      var id2 = keys[i], cf = C.ITEMS[id2], col = i % cols, row = (i / cols) | 0;
+      var x = DW / 2 - (cols * w + (cols - 1) * gap) / 2 + col * (w + gap), y = 210 + row * (h + gap);
+      ctx.fillStyle = cf.color; R.roundRect(ctx, x, y, w, h, 10); ctx.fill();
+      ctx.fillStyle = '#fff'; R.font(ctx, 27, true); ctx.fillText(cf.name + ' ×' + ZY.Items.count(id2), x + w / 2, y + 28);
+      R.font(ctx, 16, false); ctx.fillText(cf.desc.slice(0, 19), x + w / 2, y + 56);
+      R.font(ctx, 20, true); ctx.fillText('购买 ' + C.ITEM_COSTS[id2] + ' 金币', x + w / 2, y + 84);
+      UI.itemShopCards.push({ x: x, y: y, w: w, h: h, item: id2 });
+    }
+    drawToasts(ctx);
+  };
 
   UI.drawWeaponLib = function (ctx) {
     var DW = A.DW, DH = A.DH;
