@@ -95,7 +95,7 @@
         if (hitAny) {
           u.cd = itv;
           syncAttackT(S, u, 0.35); // 触发文字变形（两字同步）
-          BT.fx('roar', p.x, p.y);
+          BT.fx('shock', p.x, p.y);
           if (side === 'p') ZY.sfx('shoot');
           // 张飞/张翼怒吼：每个被击的敌人都增加自身怒气
           if (u.kind === 'g') addRage(u, 8);
@@ -110,7 +110,7 @@
         syncAttackT(S, u, 0.35); // 触发文字变形（两字同步）
         // 贯穿：目标连线上的敌人全部命中
         var ang = Math.atan2(t0.y - p.y, t0.x - p.x);
-        BT.fx('lance', p.x, p.y, ang, range);
+        BT.fx(u.name === '常帅' ? 'thrust' : 'lance', p.x, p.y, ang, range);
         if (side === 'p') ZY.sfx('shoot');
         for (var j = 0; j < list.length; j++) {
           var e2 = list[j];
@@ -133,6 +133,9 @@
       u.cd = itv;
       syncAttackT(S, u, 0.35); // 触发文字变形（两字同步）
       var exec = st.skill === 'execute' && !target.boss && target.hp / target.maxHp < 0.35;
+      if (u.kind === 'g' && st.skill === 'snipe') BT.fx('arrow', p.x, p.y, Math.atan2(target.y - p.y, target.x - p.x));
+      if (u.kind === 'g' && st.skill === 'execute') BT.fx('blade', target.x, target.y, Math.atan2(target.y - p.y, target.x - p.x));
+      if (u.kind === 'g' && st.skill === 'aura') BT.fx('aura', p.x, p.y);
       // 武将专用弹道：未装备武器时用 GENERAL_BULLET 定义的形状+颜色
       var gConf = u.kind === 'g' ? C.GENERAL_BULLET[u.name] : null;
       var useShape = (u.kind === 'g' && gConf && !st.weaponShape) ? gConf.shape
