@@ -94,3 +94,4 @@
 
   ZY.Rank = { load: load, getRankName: getRankName, isMaxed: isMaxed, promoteOnWin: promoteOnWin, reset: reset };
 })();
+
