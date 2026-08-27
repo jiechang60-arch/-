@@ -41,7 +41,7 @@
     rematch = { host: null, guest: null };
     if (role === 'host') {
       var seed = (Math.random() * 0xFFFFFFFF) >>> 0;
-      var mapIdx = (Math.random() * 5) | 0;
+      var mapIdx = (Math.random() * 4) | 0;
       send({ k: MSG.START, seed: seed, mapIdx: mapIdx });
       beginGame(seed, mapIdx);
     } else {
@@ -128,7 +128,7 @@
           if (MP.role === 'host') {
             // 房主重新开局（重新发 START）
             var seed = (Math.random() * 0xFFFFFFFF) >>> 0;
-            var mapIdx = (Math.random() * 5) | 0;
+            var mapIdx = (Math.random() * 4) | 0;
             send({ k: MSG.START, seed: seed, mapIdx: mapIdx });
             beginGame(seed, mapIdx);
           }
