@@ -22,6 +22,7 @@
       save(s);
     }
     C.ITEM_KEYS.forEach(function (k) { if (typeof s[k] !== 'number' || isNaN(s[k])) s[k] = 0; });
+    if (!Array.isArray(s.activeLoadout)) s.activeLoadout = ['haste', 'shenbing'];
     return s;
   }
   function save(s) { A.storageSet(KEY, JSON.stringify(s)); }
@@ -29,7 +30,24 @@
   IT.save = save;
   IT.count = function (k) { return load()[k] || 0; };
   IT.isPassiveActive = function (k) { return C.ITEM_PASSIVE_KEYS.indexOf(k) >= 0 && IT.count(k) > 0; };
-  IT.activeKeys = function () { return C.ITEM_ACTIVE_KEYS.filter(function (k) { return IT.count(k) > 0; }).slice(0, C.ITEM_ACTIVE_SLOTS); };
+  IT.activeKeys = function () { return load().activeLoadout.slice(0, C.ITEM_ACTIVE_SLOTS); };
+  IT.cycleActive = function (slot) {
+    var s = load(), now = s.activeLoadout[slot], i = C.ITEM_ACTIVE_KEYS.indexOf(now);
+    for (var n = 1; n <= C.ITEM_ACTIVE_KEYS.length; n++) {
+      var next = C.ITEM_ACTIVE_KEYS[(i + n) % C.ITEM_ACTIVE_KEYS.length];
+      if ((s[next] || 0) > 0) { s.activeLoadout[slot] = next; save(s); return next; }
+    }
+    return null;
+  };
+  IT.buy = function (id) {
+    if (!C.ITEMS[id]) return false;
+    var cost = C.ITEM_COSTS[id] || 0;
+    var coin = parseInt(A.storageGet('zy_coin') || '0', 10);
+    if (coin < cost) { ZY.UI.toast('金币不足，需要 ' + cost); return false; }
+    var s = load(); s[id] = (s[id] || 0) + 1; save(s);
+    A.storageSet('zy_coin', String(coin - cost));
+    ZY.UI.toast('购入：' + C.ITEMS[id].name); return true;
+  };
 
   // ---- 被动道具 ----
   // 农民只要库存中持有至少 1 个就会生效，不消耗库存、不按日重置。
