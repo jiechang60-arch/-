@@ -128,7 +128,32 @@
           R.tilePath(ctx, x, y, L.cell, seed);
         } else {
           R.tileGreen(ctx, x, y, L.cell, seed);
-          if (t === 'build_p' || t === 'build_e') R.tileWhite(ctx, x, y, L.cell);
+          if (t === 'build_p' || t === 'build_e') {
+            R.tileWhite(ctx, x, y, L.cell);
+            // 已开发土地：亮色填充 + 清晰双层边框。
+            ctx.save();
+            ctx.strokeStyle = t === 'build_p' ? '#d79b28' : '#9b5345';
+            ctx.lineWidth = Math.max(3, L.cell * 0.055);
+            ctx.strokeRect(x + 5, y + 5, L.cell - 10, L.cell - 10);
+            ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x + 10, y + 10, L.cell - 20, L.cell - 20);
+            ctx.restore();
+          } else if (t === 'block') {
+            // 未开发土地：压暗并加斜纹，让手机小屏也能一眼区分。
+            ctx.save();
+            ctx.fillStyle = 'rgba(35,55,28,0.34)';
+            ctx.fillRect(x + 2, y + 2, L.cell - 4, L.cell - 4);
+            ctx.strokeStyle = 'rgba(25,42,20,0.38)';
+            ctx.lineWidth = 2;
+            for (var hatch = -L.cell; hatch < L.cell * 2; hatch += 16) {
+              ctx.beginPath();
+              ctx.moveTo(x + hatch, y + L.cell);
+              ctx.lineTo(x + hatch + L.cell, y);
+              ctx.stroke();
+            }
+            ctx.restore();
+          }
         }
       }
     }
@@ -416,6 +441,8 @@
         ZY.Enemies.update(dt);
         if (ZY.G && ZY.G.scene === 'play') {
           ZY.Battle.update(dt);
+          // 被动道具（例如农民）每帧独立更新；库存永久，不会消耗。
+          if (ZY.Items) ZY.Items.update(dt);
           // AI 仅单机模式驱动对手侧；联机时对手是真人
           if (!(ZY.MP && ZY.MP.active)) ZY.AI.update(dt);
           // 农民产粮（双方各自权威，对方侧不结算）
@@ -446,3 +473,4 @@
   ZY.G = null;
   if (A.hasScreen) A.raf(frame);
 })();
+
