@@ -17,6 +17,20 @@
   C.MAX_LV = 5;
   C.lvMul = function (lv) { return Math.pow(2.1, lv - 1); };
 
+  // 武将升级经验表（累计击杀数 -> 等级）。基于杀敌的自动化升级，碎片升级作为额外加速
+  C.GEN_XP_TABLE = [0, 8, 22, 45, 80]; // 累计击杀 0/8/22/45/80 时升到 1/2/3/4/5 级
+  C.GEN_MAX_LV_FROM_XP = 5;
+
+  // 武将默认弹道（未装备武器时）：每人的攻击视觉风格
+  C.GENERAL_BULLET = {
+    '赵云': { shape: 'spear',     color: '#b8860b' },
+    '马超': { shape: 'spear',     color: '#5a4a8a' },
+    '关羽': { shape: 'monkspade', color: '#2a6a3a' },
+    '张飞': { shape: 'whip',      color: '#3a2a1a' },
+    '黄忠': { shape: 'bow',       color: '#8a6a10' },
+    '刘备': { shape: 'sword',     color: '#e8a23a' }
+  };
+
   // 武将：征兵抽到金色单字碎片（不能作战，纯占格），拼齐姓名觉醒
   // 三国版：赵云、马超、关羽、张飞、黄忠、刘备（五虎上将 + 仁主）
   C.FRAG_MAP = {
@@ -79,17 +93,24 @@
   C.AVATAR_DEFAULT = 'zhaoyun';
 
   // ============ 技能道具（永久保留，永不重置） ============
-  // 对齐原版的主动道具：农民/招贤令/陨石/攻速符/神兵符
+  // 主动道具（按按钮使用，消耗库存）：招贤令/陨石/攻速符/神兵符
+  // 被动道具（持有即自动生效）：农民
   C.ITEMS = {
-    farmer:   { name: '农民',   ch: '农', color: '#5a8a3a', desc: '上阵产粮：每8秒+2馒头', target: 'cell',   cd: 0 },
+    farmer:   { name: '农民',   ch: '农', color: '#5a8a3a', desc: '被动：每 15 秒自动在己方空地生成 1 个农民，每 8 秒 +2 馒头', target: 'passive' },
     zhaoxian: { name: '招贤令', ch: '贤', color: '#4a8ad4', desc: '免费重抽备战席5张卡',   target: 'none',   cd: 0 },
     meteor:   { name: '陨石',   ch: '陨', color: '#a8402c', desc: '天降陨石：范围内敌军重创（约150伤）', target: 'any', cd: 0 },
     haste:    { name: '攻速符', ch: '速', color: '#a85ef0', desc: '全军攻击速度×2，持续8秒', target: 'none',  cd: 0 },
     shenbing: { name: '神兵符', ch: '神', color: '#e8a23a', desc: '选择一名武将，等级+1（上限Lv5）', target: 'general', cd: 0 }
   };
-  C.ITEM_KEYS = ['farmer', 'zhaoxian', 'meteor', 'haste', 'shenbing'];
+  // 主动道具显示为可点击按钮；ITEM_KEYS 是全部库存键（含被动）
+  C.ITEM_ACTIVE_KEYS = ['zhaoxian', 'meteor', 'haste', 'shenbing'];
+  C.ITEM_KEYS = C.ITEM_ACTIVE_KEYS.concat(['farmer']);
+  // 被动道具列表（不显示在按钮栏，只在顶部显示"农 ×N 倒计时"）
+  C.ITEM_PASSIVE_KEYS = ['farmer'];
   // 新玩家初始道具
-  C.ITEM_START = { farmer: 2, zhaoxian: 2, meteor: 1, haste: 1, shenbing: 1 };
+  C.ITEM_START = { farmer: 3, zhaoxian: 2, meteor: 1, haste: 1, shenbing: 1 };
+  // 被动道具效果：每 15 秒自动生成 1 个农民单位
+  C.ITEM_PASSIVE_CFG = { farmer: { spawnCD: 15, maxUnits: 4 } };
 
   // ============ 武器系统 ============
   // 4品质 × 6件 = 24件武器
@@ -148,3 +169,4 @@
 
   ZY.C = C;
 })();
+
